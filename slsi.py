@@ -18,6 +18,8 @@ def preprocess(system, rhs):
 			if system[i][j] is not None:
 				if isinstance(system[i][j], float):
 					system[i][j] = np.array(system[i][j]).reshape((1,1))
+			if system[i][j] is not None:
+				assert len(system[i][j].shape) == 2, 'System elements must be matrices %i,%i is not'%(i, j)
 			var_sizes[j] = var_sizes[j] if system[i][j] is None else system[i][j].shape[1]
 
 	for i in range(len(rhs)):
@@ -29,13 +31,13 @@ def preprocess(system, rhs):
 	dtype = np.float64
 	assert len(system) == len(rhs), 'Unequal number equations and right-hand-side vectors'
 	for i in range(neqs):
-		assert nvars == len(system[i]), 'All equations must be the same length'
+		assert nvars == len(system[i]), 'All equations must be the same length, equation %i does not comply'%i
 		for j in range(nvars):
 			if system[i][j] is not None:
 				if system[i][j].dtype == np.complex64 or system[i][j].dtype == np.complex128:
 					dtype = np.complex128
-				assert system[i][j].shape[0] == rhs_sizes[i], 'Matrices must be consistent'
-				assert system[i][j].shape[1] == var_sizes[j], 'Matrices must be consistent'
+				assert system[i][j].shape[0] == rhs_sizes[i], 'Matrices must be consistent. Matrix %i,%i does not match right-hand side %i'(i,j,i)
+				assert system[i][j].shape[1] == var_sizes[j], 'Matrices must be consistent. Matrix %i,%i does not variable %i'(i,j,j)
 	for j in range(nvars):
 		if rhs[j].dtype == np.complex64 or rhs[j].dtype == np.complex128:
 			dtype = np.complex128
