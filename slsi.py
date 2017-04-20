@@ -47,13 +47,8 @@ def postprocess(res, var_sizes):
 	else:
 		return res
 
-def solve_system(system, rhs, method=linalg.solve, **kwargs):
-	neqs, nvars, var_sizes, rhs_sizes, dtype = preprocess(system, rhs)
-
-	### Create full matrix
-	A = np.zeros((sum(rhs_sizes),sum(var_sizes)), dtype=dtype)
+def build_matrix(A, system, neqs, nvars, rhs_sizes, var_sizes):
 	assert A.shape[0] == A.shape[1], 'Number of equations and variables must equal'
-
 	r = 0
 	for i in range(neqs):
 		c = 0
@@ -62,27 +57,25 @@ def solve_system(system, rhs, method=linalg.solve, **kwargs):
 				A[r:r+rhs_sizes[i], c:c+var_sizes[j]] = system[i][j]
 			c += var_sizes[j]
 		r += rhs_sizes[i]
+
+def solve_system(system, rhs, method=linalg.solve, **kwargs):
+	neqs, nvars, var_sizes, rhs_sizes, dtype = preprocess(system, rhs)
+
+	### Create full matrix
+	A = np.zeros((sum(rhs_sizes),sum(var_sizes)), dtype=dtype)
+	build_matrix(A, system, neqs, nvars, rhs_sizes, var_sizes)
 	b = np.hstack(rhs)
 
 	### Solve
 	res = method(A, b, **kwargs)
 	return postprocess(res, var_sizes)
 
-
 def solve_sparse_system(system, rhs, method=sparse_linalg.spsolve, **kwargs):
 	neqs, nvars, var_sizes, rhs_sizes, dtype = preprocess(system, rhs)
 
 	### Create full matrix
 	A = sparse.lil_matrix((sum(rhs_sizes),sum(var_sizes)), dtype=dtype)
-	assert A.shape[0] == A.shape[1], 'Number of equations and variables must equal'
-	r = 0
-	for i in range(neqs):
-		c = 0
-		for j in range(nvars):
-			if system[i][j] is not None:
-				A[r:r+rhs_sizes[i], c:c+var_sizes[j]] = system[i][j]
-			c += var_sizes[j]
-		r += rhs_sizes[i]
+	build_matrix(A, system, neqs, nvars, rhs_sizes, var_sizes)
 	b = np.hstack(rhs)
 
 	### Solve
