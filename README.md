@@ -1,5 +1,4 @@
-# slsi
-Simultaneous Linear Solver Interface
+# Simultaneous Linear Solver Interface
 
 For solving systems like
 
