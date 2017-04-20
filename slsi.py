@@ -5,7 +5,7 @@ import numpy as np
 from scipy import linalg, sparse
 import scipy.sparse.linalg as sparse_linalg
 
-def solve_system(system, rhs, method=linalg.solve, **kwargs):
+def preprocess(system, rhs):
 	neqs = len(system)
 	nvars = len(system[0])
 
@@ -30,6 +30,26 @@ def solve_system(system, rhs, method=linalg.solve, **kwargs):
 		if rhs[j].dtype == np.complex64 or rhs[j].dtype == np.complex128:
 			dtype = np.complex128
 
+	return neqs, nvars, var_sizes, rhs_sizes, dtype
+
+def postprocess(res, var_sizes):
+	extra_output = False
+	if isinstance(res, tuple):
+		output = list(res)
+		res = res[0]
+		extra_output = True
+
+	res = np.split(res, np.cumsum(var_sizes))[:-1]
+
+	if extra_output:
+		output[0] = res
+		return tuple(output)
+	else:
+		return res
+
+def solve_system(system, rhs, method=linalg.solve, **kwargs):
+	neqs, nvars, var_sizes, rhs_sizes, dtype = preprocess(system, rhs)
+
 	### Create full matrix
 	A = np.zeros((sum(rhs_sizes),sum(var_sizes)), dtype=dtype)
 	assert A.shape[0] == A.shape[1], 'Number of equations and variables must equal'
@@ -46,41 +66,11 @@ def solve_system(system, rhs, method=linalg.solve, **kwargs):
 
 	### Solve
 	res = method(A, b, **kwargs)
+	return postprocess(res, var_sizes)
 
-	### Split solution and return
-	extra_output = False
-	if isinstance(res, tuple):
-		output = list(res)
-		res = res[0]
-		extra_output = True
-
-	res = np.split(res, np.cumsum(var_sizes))[:-1]
-
-	if extra_output:
-		output[0] = res
-		return tuple(output)
-	else:
-		return res
 
 def solve_sparse_system(system, rhs, method=sparse_linalg.spsolve, **kwargs):
-	neqs = len(system)
-	nvars = len(system[0])
-	var_sizes = [x.shape[1] for x in system[0]]
-	rhs_sizes = map(len, rhs)
-
-	### Test sizes of matrices
-	dtype = np.float64
-	assert len(system) == len(rhs), 'Unequal number equations and right-hand-side vectors'
-	for i in range(neqs):
-		assert nvars == len(system[i]), 'All equations must be the same length'
-		assert var_sizes == [x.shape[1] for x in system[i]], 'Matrices must be consistent'
-		for j in range(nvars):
-			if system[i][j].dtype == np.complex64 or system[i][j].dtype == np.complex128:
-				dtype = np.complex128
-			assert system[i][j].shape[0] == rhs_sizes[i], 'Matrices must be consistent'
-	for j in range(nvars):
-		if rhs[j].dtype == np.complex64 or rhs[j].dtype == np.complex128:
-			dtype = np.complex128
+	neqs, nvars, var_sizes, rhs_sizes, dtype = preprocess(system, rhs)
 
 	### Create full matrix
 	A = sparse.lil_matrix((sum(rhs_sizes),sum(var_sizes)), dtype=dtype)
@@ -89,7 +79,8 @@ def solve_sparse_system(system, rhs, method=sparse_linalg.spsolve, **kwargs):
 	for i in range(neqs):
 		c = 0
 		for j in range(nvars):
-			A[r:r+rhs_sizes[i], c:c+var_sizes[j]] = system[i][j]
+			if system[i][j] is not None:
+				A[r:r+rhs_sizes[i], c:c+var_sizes[j]] = system[i][j]
 			c += var_sizes[j]
 		r += rhs_sizes[i]
 	b = np.hstack(rhs)
@@ -97,21 +88,7 @@ def solve_sparse_system(system, rhs, method=sparse_linalg.spsolve, **kwargs):
 	### Solve
 	A = sparse.csr_matrix(A)
 	res = method(A, b, **kwargs)
-
-	### Split solution and return
-	extra_output = False
-	if isinstance(res, tuple):
-		output = list(res)
-		res = res[0]
-		extra_output = True
-
-	res = np.split(res, np.cumsum(var_sizes))[:-1]
-
-	if extra_output:
-		output[0] = res
-		return tuple(output)
-	else:
-		return res
+	return postprocess(res, var_sizes)
 
 if __name__ == '__main__':
 	### Solve system
