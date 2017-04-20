@@ -6,13 +6,23 @@ from scipy import linalg, sparse
 import scipy.sparse.linalg as sparse_linalg
 
 def preprocess(system, rhs):
+	system = list(system)
+	rhs = list(rhs)
 	neqs = len(system)
 	nvars = len(system[0])
 
 	var_sizes = [-1]*nvars
 	for i in range(neqs):
+		system[i] = list(system[i])
 		for j in range(nvars):
+			if system[i][j] is not None:
+				if isinstance(system[i][j], float):
+					system[i][j] = np.array(system[i][j]).reshape((1,1))
 			var_sizes[j] = var_sizes[j] if system[i][j] is None else system[i][j].shape[1]
+
+	for i in range(len(rhs)):
+		if isinstance(rhs[i], float):
+			rhs[i] = np.array(rhs[i]).reshape((1))
 	rhs_sizes = map(len, rhs)
 
 	### Test sizes of matrices
