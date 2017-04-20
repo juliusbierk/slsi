@@ -8,7 +8,11 @@ import scipy.sparse.linalg as sparse_linalg
 def solve_system(system, rhs, method=linalg.solve, **kwargs):
 	neqs = len(system)
 	nvars = len(system[0])
-	var_sizes = [x.shape[1] for x in system[0]]
+
+	var_sizes = [-1]*nvars
+	for i in range(neqs):
+		for j in range(nvars):
+			var_sizes[j] = var_sizes[j] if system[i][j] is None else system[i][j].shape[1]
 	rhs_sizes = map(len, rhs)
 
 	### Test sizes of matrices
@@ -16,11 +20,12 @@ def solve_system(system, rhs, method=linalg.solve, **kwargs):
 	assert len(system) == len(rhs), 'Unequal number equations and right-hand-side vectors'
 	for i in range(neqs):
 		assert nvars == len(system[i]), 'All equations must be the same length'
-		assert var_sizes == [x.shape[1] for x in system[i]], 'Matrices must be consistent'
 		for j in range(nvars):
-			if system[i][j].dtype == np.complex64 or system[i][j].dtype == np.complex128:
-				dtype = np.complex128
-			assert system[i][j].shape[0] == rhs_sizes[i], 'Matrices must be consistent'
+			if system[i][j] is not None:
+				if system[i][j].dtype == np.complex64 or system[i][j].dtype == np.complex128:
+					dtype = np.complex128
+				assert system[i][j].shape[0] == rhs_sizes[i], 'Matrices must be consistent'
+				assert system[i][j].shape[1] == var_sizes[j], 'Matrices must be consistent'
 	for j in range(nvars):
 		if rhs[j].dtype == np.complex64 or rhs[j].dtype == np.complex128:
 			dtype = np.complex128
@@ -33,7 +38,8 @@ def solve_system(system, rhs, method=linalg.solve, **kwargs):
 	for i in range(neqs):
 		c = 0
 		for j in range(nvars):
-			A[r:r+rhs_sizes[i], c:c+var_sizes[j]] = system[i][j]
+			if system[i][j] is not None:
+				A[r:r+rhs_sizes[i], c:c+var_sizes[j]] = system[i][j]
 			c += var_sizes[j]
 		r += rhs_sizes[i]
 	b = np.hstack(rhs)
@@ -140,5 +146,14 @@ if __name__ == '__main__':
 	x, y = solve_sparse_system(((A1, B1), (A2, B2)), (a1, a2))
 	A2 = A2.todense()
 	B1 = B1.todense()
+	print np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
+		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2)
+
+	print 'Test missing array'
+	x, y = solve_system(((A1, B1), (None, B2)), (a1, a2))
+	A2 = np.array([[0, 0],
+				   [0, 0],
+				   [0, 0],
+				   [0, 0]])
 	print np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
 		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2)
