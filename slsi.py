@@ -25,7 +25,7 @@ def preprocess(system, rhs):
 	for i in range(len(rhs)):
 		if isinstance(rhs[i], float):
 			rhs[i] = np.array(rhs[i]).reshape((1))
-	rhs_sizes = map(len, rhs)
+	rhs_sizes = list(map(len, rhs))
 
 	### Test sizes of matrices
 	dtype = np.float64
@@ -97,7 +97,7 @@ def solve_sparse_system(system, rhs, method=sparse_linalg.spsolve, **kwargs):
 
 if __name__ == '__main__':
 	### Solve system
-	# A1 x + B1 y = a1 
+	# A1 x + B1 y = a1
 	# A2 x + B2 y = a2
 
 	a1 = np.array([1, 2, 3])
@@ -117,25 +117,25 @@ if __name__ == '__main__':
 				   [0, 0, 2, 1, 0],
 				   [8, 0, 0, 0, 8]])
 
-	print 'Test dense solver'
+	print('Test dense solver')
 	x, y = solve_system(((A1, B1), (A2, B2)), (a1, a2))
-	print np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
-		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2)
+	print(np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
+		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2))
 
-	print 'Test sparse solver'
+	print('Test sparse solver')
 	A2 = sparse.lil_matrix(A2)
 	B1 = sparse.csc_matrix(B1)
 	x, y = solve_sparse_system(((A1, B1), (A2, B2)), (a1, a2))
 	A2 = A2.todense()
 	B1 = B1.todense()
-	print np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
-		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2)
+	print(np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
+		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2))
 
-	print 'Test missing array'
+	print('Test missing array')
 	x, y = solve_system(((A1, B1), (None, B2)), (a1, a2))
 	A2 = np.array([[0, 0],
 				   [0, 0],
 				   [0, 0],
 				   [0, 0]])
-	print np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
-		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2)
+	print(np.allclose(np.dot(A1, x) + np.dot(B1, y), a1) and \
+		  np.allclose(np.dot(A2, x) + np.dot(B2, y), a2))
